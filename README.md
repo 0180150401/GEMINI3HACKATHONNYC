@@ -68,8 +68,8 @@ npm run dev
 ### Digital Landscape (Google Cloud)
 
 1. Create a [Google Cloud project](https://console.cloud.google.com)
-2. Enable [Elevation API](https://developers.google.com/maps/documentation/elevation) and [Places API](https://developers.google.com/maps/documentation/places)
-3. Create an API key and add to `GOOGLE_MAPS_API_KEY`
+2. Enable [Elevation API](https://developers.google.com/maps/documentation/elevation), [Places API](https://developers.google.com/maps/documentation/places), and [Maps JavaScript API](https://developers.google.com/maps/documentation/javascript) (for Friends heat map)
+3. Create an API key and add to `GOOGLE_MAPS_API_KEY` and `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` (can use same key)
 4. Without a key, the app falls back to [Open Topo Data](https://www.opentopodata.org/) (free, rate-limited)
 
 ### Spotify

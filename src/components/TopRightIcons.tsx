@@ -1,17 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-
-const SOURCE_LABELS: Record<string, string> = {
-  news: 'News',
-  weather: 'Weather',
-  terrain: 'Terrain',
-  location: 'Location',
-  spotify: 'Spotify',
-  places: 'Nearby places',
-  image: 'Image',
-  playlist: 'Playlist',
-};
+import { CameraCaptureModal } from './CameraCaptureModal';
 
 const icons = {
   upload: (
@@ -34,6 +24,12 @@ const icons = {
       <circle cx="12" cy="10" r="3" />
     </svg>
   ),
+  camera: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+      <circle cx="12" cy="13" r="4" />
+    </svg>
+  ),
 };
 
 const STORAGE_IMAGE_KEY = 'recesss_upload_image';
@@ -42,10 +38,10 @@ const STORAGE_PLAYLIST_KEY = 'recesss_upload_playlist';
 export function TopRightIcons() {
   const [musicConnected, setMusicConnected] = useState(false);
   const [locationEnabled, setLocationEnabled] = useState(false);
-  const [sources, setSources] = useState<string[]>([]);
   const [imageUploaded, setImageUploaded] = useState(false);
   const [playlistUploaded, setPlaylistUploaded] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [cameraModalOpen, setCameraModalOpen] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const playlistInputRef = useRef<HTMLInputElement>(null);
 
@@ -59,13 +55,6 @@ export function TopRightIcons() {
   useEffect(() => {
     refreshConnections();
   }, []);
-
-  useEffect(() => {
-    fetch('/api/ingest-status', { credentials: 'include' })
-      .then((r) => (r.ok ? r.json() : { sources: [] }))
-      .then((d) => setSources(d.sources ?? []))
-      .catch(() => setSources([]));
-  }, [musicConnected, locationEnabled, imageUploaded, playlistUploaded]);
 
   const refreshUploadState = () => {
     setImageUploaded(!!sessionStorage.getItem(STORAGE_IMAGE_KEY));
@@ -145,6 +134,16 @@ export function TopRightIcons() {
   };
 
   return (
+    <>
+    <CameraCaptureModal
+      open={cameraModalOpen}
+      onClose={() => setCameraModalOpen(false)}
+      onCaptured={() => {
+        setImageUploaded(true);
+        setToast('Photo captured');
+        setTimeout(() => setToast(null), 3000);
+      }}
+    />
     <div className="fixed top-4 right-4 z-40 flex flex-col items-end gap-2">
       <div className="flex items-center gap-2">
         <input
@@ -161,6 +160,14 @@ export function TopRightIcons() {
           className="hidden"
           onChange={handlePlaylistChange}
         />
+        <button
+          onClick={() => setCameraModalOpen(true)}
+          className={`p-2 transition-colors ${imageUploaded ? 'text-white' : 'text-white/60 hover:text-white'}`}
+          aria-label="Capture from camera"
+          title="Capture photo from camera"
+        >
+          {icons.camera}
+        </button>
         <button
           onClick={handleImageUpload}
           className={`p-2 transition-colors ${imageUploaded ? 'text-white' : 'text-white/60 hover:text-white'}`}
@@ -186,16 +193,6 @@ export function TopRightIcons() {
           {icons.location}
         </button>
       </div>
-      {(() => {
-        const connected = [...sources];
-        if (imageUploaded && !connected.includes('image')) connected.push('image');
-        if (playlistUploaded && !connected.includes('playlist')) connected.push('playlist');
-        return connected.length > 0 ? (
-          <p className="text-xs text-white/50 text-right max-w-[220px]">
-            In pipeline: {connected.map((s) => SOURCE_LABELS[s] ?? s).join(', ')}
-          </p>
-        ) : null;
-      })()}
       {toast && (
         <div
           className="fixed bottom-24 left-1/2 -translate-x-1/2 px-4 py-2 bg-white/10 backdrop-blur-sm text-white text-sm rounded-lg border border-white/20 z-50"
@@ -205,5 +202,6 @@ export function TopRightIcons() {
         </div>
       )}
     </div>
+    </>
   );
 }

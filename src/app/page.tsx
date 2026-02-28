@@ -65,7 +65,13 @@ export default function HomePage() {
       const res = await fetch('/api/generate-game', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lat, lng, imageBase64, imageMimeType, metrics: { uploadedPlaylist } }),
+        body: JSON.stringify({
+          lat,
+          lng,
+          imageBase64,
+          imageMimeType,
+          metrics: { uploadedPlaylist },
+        }),
         credentials: 'include',
       });
       const data = await res.json();

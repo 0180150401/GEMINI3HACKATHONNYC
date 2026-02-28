@@ -19,6 +19,7 @@ export async function POST(request: Request) {
     metrics?: Partial<UserMetrics>;
     imageBase64?: string;
     imageMimeType?: string;
+    useCamera?: boolean;
   };
 
   const lat = body.lat ?? 40.7128;
@@ -84,15 +85,19 @@ export async function POST(request: Request) {
 
   const recentGameTypes = (recentSessions ?? []).map((s) => s.game_type).filter(Boolean);
 
+  const useCamera = body.useCamera ?? false;
+
   try {
     const dtResult = evaluateDecisionTree(metrics, {
       hasImage: !!pipelineContext.image,
+      useCamera,
       recentGameTypes,
     });
 
     const gameConfig = await generateGameConfig(metrics, {
       imageBase64: pipelineContext.image?.base64,
       imageMimeType: pipelineContext.image?.mimeType ?? 'image/jpeg',
+      useCamera,
       suggestedType: dtResult.suggestedType,
       dtPath: dtResult.path,
       recentGameTypes,

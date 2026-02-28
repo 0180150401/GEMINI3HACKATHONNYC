@@ -6,6 +6,7 @@ import { buildGamePrompt, GAME_CONFIG_SCHEMA } from './game-prompt';
 export interface GenerateGameOptions {
   imageBase64?: string;
   imageMimeType?: string;
+  useCamera?: boolean;
   suggestedType?: string;
   dtPath?: string[];
   recentGameTypes?: string[];
@@ -41,6 +42,7 @@ export async function generateGameConfig(metrics: UserMetrics, options?: Generat
   const hasImage = !!(options?.imageBase64 && options?.imageMimeType);
   const prompt = buildGamePrompt(metrics, {
     hasImage,
+    useCamera: options?.useCamera,
     suggestedType: options?.suggestedType,
     dtPath: options?.dtPath,
     recentGameTypes: options?.recentGameTypes,
@@ -97,12 +99,22 @@ export async function generateGameConfig(metrics: UserMetrics, options?: Generat
     'memory_match',
     'trivia',
     'reaction_test',
+    'face_dodge',
   ];
   if (!validTypes.includes(parsed.gameType)) {
     parsed.gameType = 'obstacle_dodge';
   }
 
   // Ensure config has required fields
+  const defaultTrivia = [
+    { question: 'What is the capital of France?', options: ['London', 'Paris', 'Berlin', 'Madrid'], correctIndex: 1 },
+    { question: 'Which planet is closest to the Sun?', options: ['Venus', 'Mercury', 'Mars', 'Earth'], correctIndex: 1 },
+    { question: 'How many continents are there?', options: ['5', '6', '7', '8'], correctIndex: 2 },
+  ];
+  const triviaQuestions =
+    Array.isArray(parsed.config?.triviaQuestions) && parsed.config.triviaQuestions.length > 0
+      ? parsed.config.triviaQuestions
+      : defaultTrivia;
   parsed.config = {
     scrollSpeed: parsed.config?.scrollSpeed ?? 6,
     obstacleDensity: parsed.config?.obstacleDensity ?? 0.3,
@@ -110,6 +122,7 @@ export async function generateGameConfig(metrics: UserMetrics, options?: Generat
     theme: parsed.config?.theme ?? 'day',
     difficulty: parsed.config?.difficulty ?? 5,
     ...parsed.config,
+    triviaQuestions,
   };
 
   return parsed;

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { RecessHeatMap } from '@/components/RecessHeatMap';
 
 interface FriendsData {
   username: string | null;
@@ -9,7 +10,7 @@ interface FriendsData {
 }
 
 export default function FriendsPage() {
-  const [tab, setTab] = useState<'requests' | 'lookup'>('lookup');
+  const [tab, setTab] = useState<'activity' | 'requests' | 'lookup'>('activity');
   const [data, setData] = useState<FriendsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [usernameInput, setUsernameInput] = useState('');
@@ -87,6 +88,12 @@ export default function FriendsPage() {
       <div className="max-w-lg mx-auto px-6 py-12 space-y-4">
         <div className="flex border-2 border-white">
           <button
+            onClick={() => setTab('activity')}
+            className={`flex-1 py-3 text-xs font-bold uppercase ${tab === 'activity' ? 'bg-white text-black' : ''}`}
+          >
+            Activity
+          </button>
+          <button
             onClick={() => setTab('requests')}
             className={`flex-1 py-3 text-xs font-bold uppercase ${tab === 'requests' ? 'bg-white text-black' : ''}`}
           >
@@ -99,6 +106,15 @@ export default function FriendsPage() {
             Lookup
           </button>
         </div>
+
+        {tab === 'activity' && (
+          <div className="space-y-3">
+            <p className="text-sm text-white/80">Where people are playing Recesss</p>
+            <div className="w-full rounded-lg overflow-hidden border-2 border-white/20" style={{ height: 320 }}>
+              <RecessHeatMap height="100%" />
+            </div>
+          </div>
+        )}
 
         {tab === 'requests' && (
           <div className="space-y-2">

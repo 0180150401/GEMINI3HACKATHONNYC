@@ -88,6 +88,7 @@ export interface DecisionTreeResult {
 
 export interface DecisionTreeOptions {
   hasImage?: boolean;
+  useCamera?: boolean;
   recentGameTypes?: string[];
 }
 
@@ -199,6 +200,7 @@ function applyVarietyPreference(
     'memory_match',
     'trivia',
     'reaction_test',
+    'face_dodge',
   ];
   const alternatives = ALL_TYPES.filter((t) => !recentSet.has(t));
   if (alternatives.length === 0) return { type: preferred, path };
@@ -215,10 +217,23 @@ export function evaluateDecisionTree(
 ): DecisionTreeResult {
   const path: string[] = [];
   const hasImage = options?.hasImage ?? false;
+  const useCamera = options?.useCamera ?? false;
   const recentGameTypes = options?.recentGameTypes ?? [];
 
   const scores = computeSignalScores(metrics, hasImage);
   const nicheContext = getNicheContext(metrics, scores, path);
+
+  // ─── CAMERA BRANCH (user requested camera game) ────────────────────────
+  if (useCamera) {
+    path.push('camera_requested');
+    const result = applyVarietyPreference('face_dodge', recentGameTypes, path);
+    return {
+      suggestedType: result.type,
+      path: result.path,
+      signalScores: scores,
+      nicheContext: { ...nicheContext, dominantSignal: 'image' },
+    };
+  }
 
   // ─── PRIORITY CONDITIONS (check first) ─────────────────────────────────
   const weatherCond = metrics.weather?.condition?.toLowerCase() ?? '';

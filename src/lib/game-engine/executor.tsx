@@ -8,6 +8,7 @@ import { RhythmTap } from '@/components/games/RhythmTap';
 import { MemoryMatch } from '@/components/games/MemoryMatch';
 import { Trivia } from '@/components/games/Trivia';
 import { ReactionTest } from '@/components/games/ReactionTest';
+import { FaceDodge } from '@/components/games/FaceDodge';
 
 interface ExecutorProps {
   config: GameConfig;
@@ -38,6 +39,10 @@ const HOW_TO_PLAY: Record<string, { desc: string; computer: string }> = {
     desc: 'Tap when the cue appears.',
     computer: 'SPACE or click when target appears',
   },
+  face_dodge: {
+    desc: 'Dodge obstacles with your face.',
+    computer: 'Move face left/right or use mouse/touch',
+  },
 };
 
 function GameContent({ config, ready }: ExecutorProps & { ready: boolean }) {
@@ -54,6 +59,8 @@ function GameContent({ config, ready }: ExecutorProps & { ready: boolean }) {
       return <Trivia config={config.config} ready={ready} />;
     case 'reaction_test':
       return <ReactionTest config={config.config} ready={ready} />;
+    case 'face_dodge':
+      return <FaceDodge config={config.config} ready={ready} />;
     default:
       return <ObstacleDodge config={config.config} ready={ready} />;
   }

@@ -7,6 +7,7 @@ export const GAME_TYPES = [
   'memory_match',
   'trivia',
   'reaction_test',
+  'face_dodge',
 ] as const;
 
 export const GAME_CONFIG_SCHEMA = {
@@ -36,6 +37,19 @@ export const GAME_CONFIG_SCHEMA = {
         flavor: { type: 'string', description: 'Creative one-word vibe: chaotic, chill, intense, whimsical, etc.' },
         mood: { type: 'string', description: 'Emotional tone from data: e.g. news anxiety, music energy' },
         narrativeHook: { type: 'string', description: 'One-line story from the data: e.g. running from headlines' },
+        useCamera: { type: 'boolean', description: 'If true, game uses live camera (face_dodge only)' },
+        triviaQuestions: {
+          type: 'array',
+          description: 'For trivia game only: 3-5 questions from headlines. Each: { question, options: string[], correctIndex: 0-3 }',
+          items: {
+            type: 'object',
+            properties: {
+              question: { type: 'string' },
+              options: { type: 'array', items: { type: 'string' } },
+              correctIndex: { type: 'number' },
+            },
+          },
+        },
       },
       required: ['scrollSpeed', 'obstacleDensity', 'theme'],
     },
@@ -45,6 +59,7 @@ export const GAME_CONFIG_SCHEMA = {
 
 export interface BuildGamePromptOptions {
   hasImage?: boolean;
+  useCamera?: boolean;
   suggestedType?: string;
   dtPath?: string[];
   recentGameTypes?: string[];
@@ -65,6 +80,7 @@ export function buildGamePrompt(
 ): string {
   const opts = typeof options === 'boolean' ? { hasImage: options } : options ?? {};
   const hasImage = opts.hasImage ?? false;
+  const useCamera = opts.useCamera ?? false;
   const suggestedType = opts.suggestedType;
   const dtPath = opts.dtPath;
   const recentGameTypes = opts.recentGameTypes ?? [];
@@ -96,6 +112,9 @@ export function buildGamePrompt(
   const imageNote = hasImage
     ? `\nIMAGE: An image was provided above. Use its colors, mood, subject matter, and visual style to personalize the game (theme, difficulty, reasoning). Reference the image in your reasoning.\n`
     : '';
+  const cameraNote = useCamera
+    ? `\nCAMERA: User requested a camera game. Prefer face_dodge when appropriate. Config.useCamera should be true for face_dodge.\n`
+    : '';
 
   const dtNote =
     suggestedType && dtPath?.length
@@ -103,7 +122,7 @@ export function buildGamePrompt(
       : '';
 
   return `You are a game designer creating a UNIQUE, PERSONALIZED mini-game. Your config MUST directly reflect the user's data below. Never output a generic config—every field should be derived from their news, weather, location, music, or the provided image.
-${imageNote}${dtNote}${nicheNote}${varietyNote}
+${imageNote}${cameraNote}${dtNote}${nicheNote}${varietyNote}
 CREATIVITY (hackathon prompts): Use Gemini's long-context to build an intelligent, evolving experience. Create a narrative hook from the data. If music: personalize based on track/artist energy. If news: let headlines drive the narrative. Be creative and unexpected—never boring.
 TODAY'S DIRECTION: ${randomDirection}
 ${timestamp ? `\nContext: ${timestamp}\n` : ''}
@@ -114,8 +133,9 @@ Available game types:
 - obstacle_dodge: Mixed data. Use news themes, placeTypes, weather for obstacle feel. Good when: varied data or no strong signal.
 - rhythm_tap: Music-driven. Spotify tempo directly sets beat speed. Good when: spotify.tempo present, or calming themes.
 - memory_match: Match pairs from uploaded image. Good when: image present and calm themes.
-- trivia: Answer questions from news headlines. Good when: news dominant.
+- trivia: Answer questions from news headlines. Good when: news dominant. MUST include triviaQuestions: 3-5 items, each with question (from headlines), options (4 strings, one correct), correctIndex (0-3).
 - reaction_test: Tap/click on cue. Good when: high tempo or energetic news.
+- face_dodge: Live camera game. Move your face to dodge falling obstacles. Good when: useCamera requested, or image/camera present with energetic vibes.
 
 User data (USE THIS):
 ${JSON.stringify(metrics, null, 2)}
