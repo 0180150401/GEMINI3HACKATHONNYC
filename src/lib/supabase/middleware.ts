@@ -2,14 +2,17 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request,
-  });
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return NextResponse.next({ request });
+  }
+
+  try {
+    let supabaseResponse = NextResponse.next({ request });
+
+    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -24,10 +27,13 @@ export async function updateSession(request: NextRequest) {
           });
         },
       },
-    }
-  );
+    });
 
-  await supabase.auth.getUser();
+    // Use getClaims() per Supabase docs - validates JWT and refreshes session
+    await supabase.auth.getClaims();
 
-  return supabaseResponse;
+    return supabaseResponse;
+  } catch {
+    return NextResponse.next({ request });
+  }
 }

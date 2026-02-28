@@ -103,8 +103,8 @@ src/
 
 ## Deploy
 
-- **Vercel**: Connect repo, add env vars, deploy
-- **Supabase**: Create project, run migrations, add URL/keys to Vercel
+- **Vercel**: Connect repo, then add environment variables from your `.env.local` (Settings → Environment Variables). Use your actual values—not `.env.example`, which is only a template.
+- **Supabase**: Create project, run migrations, add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` from your `.env.local` to Vercel.
 
 ## License
 
