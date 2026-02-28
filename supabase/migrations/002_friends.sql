@@ -1,6 +1,6 @@
 -- Profiles: invite codes and display names for friend discovery
 CREATE TABLE profiles (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE,
   invite_code TEXT NOT NULL UNIQUE,
   display_name TEXT,
@@ -10,7 +10,7 @@ CREATE TABLE profiles (
 
 -- Friend connections: requester sends to receiver, status pending until accepted
 CREATE TABLE friend_connections (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   requester_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   receiver_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   status TEXT NOT NULL DEFAULT 'pending', -- 'pending' | 'accepted'

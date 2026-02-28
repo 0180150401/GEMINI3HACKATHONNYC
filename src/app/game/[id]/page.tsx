@@ -33,10 +33,7 @@ export default async function GamePage({
         <h1 className="text-2xl font-bold uppercase tracking-tight">
           {config.gameType.replace('_', ' ')}
         </h1>
-        {config.reasoning && (
-          <p className="text-white/70 text-sm">&quot;{config.reasoning}&quot;</p>
-        )}
-        <div className="border-2 border-white p-6 flex justify-center bg-black">
+        <div className="flex justify-center">
           <GameExecutor config={config} />
         </div>
       </div>

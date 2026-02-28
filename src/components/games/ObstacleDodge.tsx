@@ -8,7 +8,7 @@ interface Config {
   theme?: 'day' | 'night';
 }
 
-export function ObstacleDodge({ config }: { config: Config }) {
+export function ObstacleDodge({ config, ready = true }: { config: Config; ready?: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [score, setScore] = useState(0);
   const scrollSpeed = config.scrollSpeed ?? 6;
@@ -79,15 +79,15 @@ export function ObstacleDodge({ config }: { config: Config }) {
   }, [scrollSpeed, density, isDay]);
 
   useEffect(() => {
-    run();
-  }, [run]);
+    if (ready) run();
+  }, [run, ready]);
 
   return (
     <div className="flex flex-col items-center gap-4">
       <p className="text-zinc-400">Score: {score}</p>
       <canvas
         ref={canvasRef}
-        className="rounded-lg border border-zinc-700 bg-black"
+        className="rounded-lg bg-black"
         width={400}
         height={300}
       />

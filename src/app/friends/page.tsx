@@ -138,11 +138,6 @@ export default function FriendsPage() {
           </form>
         )}
 
-        {!data?.username && (
-          <p className="text-xs text-white/40">
-            <a href="/settings" className="underline">Set username</a> in Settings
-          </p>
-        )}
       </div>
     </div>
   );

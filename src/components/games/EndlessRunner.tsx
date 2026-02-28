@@ -9,7 +9,7 @@ interface Config {
   theme?: 'day' | 'night';
 }
 
-export function EndlessRunner({ config }: { config: Config }) {
+export function EndlessRunner({ config, ready = true }: { config: Config; ready?: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [gameOver, setGameOver] = useState(false);
   const [score, setScore] = useState(0);
@@ -86,15 +86,15 @@ export function EndlessRunner({ config }: { config: Config }) {
   }, [scrollSpeed, terrainHeights, isDay, gameOver]);
 
   useEffect(() => {
-    if (!gameOver) run();
-  }, [run, gameOver]);
+    if (ready && !gameOver) run();
+  }, [run, gameOver, ready]);
 
   return (
     <div className="flex flex-col items-center gap-4">
       <p className="text-zinc-400">Score: {score}</p>
       <canvas
         ref={canvasRef}
-        className="rounded-lg border border-zinc-700 bg-black"
+        className="rounded-lg bg-black"
         style={{ width: 400, height: 300 }}
       />
       <p className="text-sm text-zinc-500">Press to jump (auto-run)</p>

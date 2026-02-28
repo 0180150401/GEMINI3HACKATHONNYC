@@ -7,7 +7,7 @@ interface Config {
   theme?: 'day' | 'night';
 }
 
-export function RhythmTap({ config }: { config: Config }) {
+export function RhythmTap({ config, ready = true }: { config: Config; ready?: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [score, setScore] = useState(0);
   const [combo, setCombo] = useState(0);
@@ -15,6 +15,7 @@ export function RhythmTap({ config }: { config: Config }) {
   const isDay = config.theme !== 'night';
 
   useEffect(() => {
+    if (!ready) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -45,7 +46,15 @@ export function RhythmTap({ config }: { config: Config }) {
       setCombo(0);
     };
 
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        handleTap();
+      }
+    };
+
     canvas.addEventListener('click', handleTap as EventListener);
+    window.addEventListener('keydown', handleKey);
 
     function draw() {
       if (cancelled) return;
@@ -76,15 +85,16 @@ export function RhythmTap({ config }: { config: Config }) {
     return () => {
       cancelled = true;
       canvas.removeEventListener('click', handleTap as EventListener);
+      window.removeEventListener('keydown', handleKey);
     };
-  }, [scrollSpeed, isDay]);
+  }, [scrollSpeed, isDay, ready]);
 
   return (
     <div className="flex flex-col items-center gap-4">
       <p className="text-zinc-400">Score: {score} | Combo: {combo}</p>
       <canvas
         ref={canvasRef}
-        className="rounded-lg border border-zinc-700 bg-black cursor-pointer"
+        className="rounded-lg bg-black cursor-pointer"
         width={400}
         height={300}
       />

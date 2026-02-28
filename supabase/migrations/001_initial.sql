@@ -1,12 +1,9 @@
 -- Data-Driven Mini Games Platform - Initial Schema
 -- Users are managed by Supabase Auth; we extend with profiles and data
 
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
 -- Data connections (OAuth tokens, webhook identifiers)
 CREATE TABLE data_connections (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   provider TEXT NOT NULL, -- 'spotify', 'apple_health'
   access_token TEXT,
@@ -20,7 +17,7 @@ CREATE TABLE data_connections (
 
 -- Cached user metrics (from Apple Health webhook, Spotify, OpenTopo, manual input)
 CREATE TABLE user_metrics (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   provider TEXT NOT NULL, -- 'apple_health', 'spotify', 'opentopo', 'manual'
   metrics JSONB NOT NULL DEFAULT '{}',
@@ -30,7 +27,7 @@ CREATE TABLE user_metrics (
 
 -- Game sessions (generated configs from Gemini)
 CREATE TABLE game_sessions (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   game_type TEXT NOT NULL,
   config JSONB NOT NULL DEFAULT '{}',

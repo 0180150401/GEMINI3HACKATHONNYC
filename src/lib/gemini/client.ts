@@ -16,29 +16,46 @@ const DEFAULT_CONFIG: GameConfig = {
 };
 
 export async function generateGameConfig(metrics: UserMetrics): Promise<GameConfig> {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey) {
-    return { ...DEFAULT_CONFIG, reasoning: 'Demo mode: GEMINI_API_KEY not set. Add your key to enable AI-powered generation.' };
+    return { ...DEFAULT_CONFIG, reasoning: 'Demo mode: GEMINI_API_KEY not set. Add your key to .env.local to enable AI-powered generation.' };
   }
 
   const ai = new GoogleGenAI({ apiKey });
   const prompt = buildGamePrompt(metrics);
 
-  const res = await ai.models.generateContent({
-    model: 'gemini-2.0-flash',
-    contents: prompt,
-    config: {
-      responseMimeType: 'application/json',
-      responseSchema: GAME_CONFIG_SCHEMA as object,
-    },
-  });
+  let res;
+  try {
+    res = await ai.models.generateContent({
+      model: 'gemini-2.0-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: GAME_CONFIG_SCHEMA as object,
+      },
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('quota')) {
+      return {
+        ...DEFAULT_CONFIG,
+        reasoning: 'Rate limit reached. Using default config. Check quota at ai.google.dev.',
+      };
+    }
+    throw new Error(`Gemini API error: ${msg}`);
+  }
 
   const text = res.text;
   if (!text) {
     throw new Error('No response from Gemini');
   }
 
-  const parsed = JSON.parse(text) as GameConfig;
+  let parsed: GameConfig;
+  try {
+    parsed = JSON.parse(text) as GameConfig;
+  } catch {
+    throw new Error('Invalid JSON from Gemini');
+  }
 
   // Ensure valid game type
   const validTypes = ['endless_runner', 'obstacle_dodge', 'rhythm_tap'];
