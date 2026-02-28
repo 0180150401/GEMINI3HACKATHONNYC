@@ -10,24 +10,27 @@ export async function GET(request: Request) {
   const error = url.searchParams.get('error');
 
   if (error) {
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/game/new?error=${error}`);
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/?error=${error}`);
   }
   if (!code || !state) {
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/game/new?error=missing_params`);
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/?error=missing_params`);
   }
 
   const cookieStore = await cookies();
   const savedState = cookieStore.get('spotify_oauth_state')?.value;
   if (!savedState || savedState !== state) {
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/game/new?error=invalid_state`);
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/?error=invalid_state`);
   }
   cookieStore.delete('spotify_oauth_state');
 
   let userId: string;
+  let returnTo = '/';
   try {
-    userId = JSON.parse(Buffer.from(state, 'base64').toString()).userId;
+    const parsed = JSON.parse(Buffer.from(state, 'base64').toString());
+    userId = parsed.userId;
+    if (parsed.returnTo) returnTo = parsed.returnTo;
   } catch {
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/game/new?error=invalid_state`);
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/?error=invalid_state`);
   }
 
   const tokens = await exchangeCodeForTokens(code);
@@ -46,5 +49,8 @@ export async function GET(request: Request) {
     { onConflict: 'user_id,provider' }
   );
 
-  return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/game/new?spotify=connected`);
+  const base = process.env.NEXT_PUBLIC_APP_URL ?? '';
+  const path = returnTo.startsWith('/') ? returnTo : `/${returnTo}`;
+  const sep = path.includes('?') ? '&' : '?';
+  return NextResponse.redirect(`${base}${path}${sep}spotify=connected`);
 }
