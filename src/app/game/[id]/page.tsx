@@ -28,7 +28,7 @@ export default async function GamePage({
     <div className="min-h-screen bg-black text-white p-6">
       <div className="w-full max-w-2xl mx-auto space-y-6">
         <h1 className="text-2xl font-bold uppercase tracking-tight">
-          {config.gameType === 'real_world_task' ? 'Task' : config.gameType.replace(/_/g, ' ')}
+          Task
         </h1>
         <div className="flex justify-center w-full">
           <GameExecutor config={config} />
