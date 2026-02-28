@@ -1,57 +1,43 @@
 import type { UserMetrics } from '@/types';
 
-export const GAME_TYPES = [
-  'endless_runner',
-  'obstacle_dodge',
-  'rhythm_tap',
-  'memory_match',
-  'trivia',
-  'reaction_test',
-  'face_dodge',
-] as const;
+export const GAME_TYPES = ['real_world_task'] as const;
 
 export const GAME_CONFIG_SCHEMA = {
   type: 'object',
   properties: {
     gameType: {
       type: 'string',
-      enum: GAME_TYPES,
-      description: 'The type of game to generate',
+      enum: ['real_world_task'],
+      description: 'Always real_world_task',
     },
     reasoning: {
       type: 'string',
-      description: 'Gen-Z memeified, ironic description of why this game was chosen. Use slang, sarcasm, and self-deprecating humor.',
+      description: 'Gen-Z memeified, ironic description of why this task was chosen. Use slang, sarcasm, and self-deprecating humor.',
     },
     config: {
       type: 'object',
       properties: {
-        scrollSpeed: { type: 'number', description: 'Base scroll speed 1-15' },
-        obstacleDensity: { type: 'number', description: '0-1, how many obstacles' },
-        terrainHeights: {
-          type: 'array',
-          items: { type: 'number' },
-          description: 'Array of 10-20 terrain heights 0-1 for endless runner',
+        task: {
+          type: 'string',
+          description: 'Clear instruction that MUST reference the user\'s specific location when available. Name actual places (parks, cafes, streets, neighborhoods) from nearbyPlaces/placeTypes. E.g. "Take a photo of your hand holding a leaf at [Park Name]" or "Show your coffee at [Cafe Name]". Never use generic "a park" or "a cafe"—use the real place names from user data.',
+        },
+        verificationCriteria: {
+          type: 'string',
+          description: 'What Gemini should look for in the photo to verify completion (e.g. "hand visible holding a plant, leaf, or grass")',
+        },
+        travelItinerary: {
+          type: 'string',
+          description: 'A 2-4 step itinerary that MUST name specific places from nearbyPlaces/placeTypes. E.g. "1. Walk to [Park Name] on [Street]. 2. Head to the north side near the trees. 3. Complete your task there." Use real place names—never generic "the park" or "a cafe".',
+        },
+        sideQuest: {
+          type: 'string',
+          description: 'A fun optional side quest tied to the specific location. E.g. "Find the weirdest leaf in [Park Name]" or "Spot the oldest tree in [Neighborhood]"',
         },
         theme: { type: 'string', enum: ['day', 'night'] },
-        difficulty: { type: 'number', description: '1-10' },
-        flavor: { type: 'string', description: 'Creative one-word vibe: chaotic, chill, intense, whimsical, etc.' },
-        mood: { type: 'string', description: 'Emotional tone from data: e.g. news anxiety, music energy' },
-        narrativeHook: { type: 'string', description: 'One-line story from the data: e.g. running from headlines' },
-        useCamera: { type: 'boolean', description: 'If true, game uses live camera (face_dodge only)' },
-        triviaQuestions: {
-          type: 'array',
-          description: 'For trivia game only: 3-5 questions from headlines. Each: { question, options: string[], correctIndex: 0-3 }',
-          items: {
-            type: 'object',
-            properties: {
-              question: { type: 'string' },
-              options: { type: 'array', items: { type: 'string' } },
-              correctIndex: { type: 'number' },
-            },
-          },
-        },
+        flavor: { type: 'string', description: 'One-word vibe: chaotic, chill, intense, whimsical, etc.' },
+        mood: { type: 'string', description: 'Emotional tone from data' },
       },
-      required: ['scrollSpeed', 'obstacleDensity', 'theme'],
+      required: ['task', 'verificationCriteria', 'travelItinerary', 'sideQuest'],
     },
   },
   required: ['gameType', 'reasoning', 'config'],
@@ -59,14 +45,8 @@ export const GAME_CONFIG_SCHEMA = {
 
 export interface BuildGamePromptOptions {
   hasImage?: boolean;
-  useCamera?: boolean;
-  suggestedType?: string;
-  dtPath?: string[];
-  recentGameTypes?: string[];
   timestamp?: string;
-  signalScores?: { music: number; terrain: number; news: number; image: number; weather: number };
   nicheContext?: {
-    dominantSignal: string;
     placeVibe?: string;
     newsVibe?: string;
     weatherVibe?: string;
@@ -80,104 +60,54 @@ export function buildGamePrompt(
 ): string {
   const opts = typeof options === 'boolean' ? { hasImage: options } : options ?? {};
   const hasImage = opts.hasImage ?? false;
-  const useCamera = opts.useCamera ?? false;
-  const suggestedType = opts.suggestedType;
-  const dtPath = opts.dtPath;
-  const recentGameTypes = opts.recentGameTypes ?? [];
   const timestamp = opts.timestamp ?? new Date().toISOString();
-  const signalScores = opts.signalScores;
   const nicheContext = opts.nicheContext;
 
-  const nicheNote =
-    signalScores && nicheContext
-      ? `\nNICHE SIGNAL SCORES (use for fine-tuning): music=${signalScores.music.toFixed(2)}, terrain=${signalScores.terrain.toFixed(2)}, news=${signalScores.news.toFixed(2)}, image=${signalScores.image.toFixed(2)}, weather=${signalScores.weather.toFixed(2)}. Dominant: ${nicheContext.dominantSignal}. Vibes: place=${nicheContext.placeVibe ?? 'n/a'}, news=${nicheContext.newsVibe ?? 'n/a'}, weather=${nicheContext.weatherVibe ?? 'n/a'}, music=${nicheContext.musicVibe ?? 'n/a'}. Use these to create super-personalized, niche config.\n`
-      : '';
-
-  const varietyNote =
-    recentGameTypes.length > 0
-      ? `\nVARIETY: User recently played: ${recentGameTypes.join(', ')}. Pick a DIFFERENT game type and config. Avoid repetition.\n`
-      : '';
+  const nicheNote = nicheContext
+    ? `\nVibes: place=${nicheContext.placeVibe ?? 'n/a'}, news=${nicheContext.newsVibe ?? 'n/a'}, weather=${nicheContext.weatherVibe ?? 'n/a'}, music=${nicheContext.musicVibe ?? 'n/a'}. Use these to personalize the task.\n`
+    : '';
 
   const creativeDirections = [
-    'Embrace chaos—make it intense and unpredictable.',
-    'Go maximalist—cram in references from their data.',
-    'Chill escape—soothing, low-stakes vibes.',
-    'Dystopian energy—let headlines drive a darker narrative.',
-    'Whimsical and absurd—surprise them.',
-    'Music-first—let the track/artist define everything.',
-    'News-as-story—headlines become the game world.',
+    'Touch grass energy—get them outside.',
+    'IRL quest vibes—something they can do right now.',
+    'News detox—task that breaks the scroll cycle.',
+    'Music-inspired—reference their track or artist.',
+    'Weather-appropriate—match the conditions.',
+    'Place-based—use their location (park, cafe, etc.).',
   ];
   const randomDirection = creativeDirections[Math.floor(Math.random() * creativeDirections.length)];
 
   const imageNote = hasImage
-    ? `\nIMAGE: An image was provided above. Use its colors, mood, subject matter, and visual style to personalize the game (theme, difficulty, reasoning). Reference the image in your reasoning.\n`
-    : '';
-  const cameraNote = useCamera
-    ? `\nCAMERA: User requested a camera game. Prefer face_dodge when appropriate. Config.useCamera should be true for face_dodge.\n`
+    ? `\nIMAGE: An image was provided above. Use its colors, mood, subject matter to personalize the task. Reference the image in your reasoning.\n`
     : '';
 
-  const dtNote =
-    suggestedType && dtPath?.length
-      ? `\nDECISION TREE: A decision tree suggested "${suggestedType}" because: ${dtPath.join(' → ')}. You may use it or override with a different gameType if the data strongly supports it; explain your choice in reasoning.\n`
-      : '';
+  return `You are creating a REAL-WORLD TASK for the user. They will complete the task in real life, take a photo, and Gemini will verify the photo. Your output MUST be a real-world task—nothing digital or on-screen.
 
-  return `You are a game designer creating a UNIQUE, PERSONALIZED mini-game. Your config MUST directly reflect the user's data below. Never output a generic config—every field should be derived from their news, weather, location, music, or the provided image.
-${imageNote}${cameraNote}${dtNote}${nicheNote}${varietyNote}
-CREATIVITY (hackathon prompts): Use Gemini's long-context to build an intelligent, evolving experience. Create a narrative hook from the data. If music: personalize based on track/artist energy. If news: let headlines drive the narrative. Be creative and unexpected—never boring.
+${imageNote}${nicheNote}
 TODAY'S DIRECTION: ${randomDirection}
 ${timestamp ? `\nContext: ${timestamp}\n` : ''}
-CRITICAL: Use ALL available data. If a field is present, you MUST use it to personalize. NEVER repeat the same config twice. Vary scrollSpeed, obstacleDensity, terrainHeights, and theme wildly based on data.
+LOCATION CRITICAL (must follow):
+- If user has landscape.nearbyPlaces or placeTypes: The task, travelItinerary, and sideQuest MUST name specific places from that data. NEVER use generic "a park", "a cafe", "the nearest"—always use the actual place names (e.g. "Take a photo at Bryant Park", "Walk to Blue Bottle on 5th Ave"). This makes the task hyper-local and specific.
+- If no location data: Use weather/placeTypes to infer (e.g. "your nearest park" or "a spot with grass") but prefer location when available.
 
-Available game types:
-- endless_runner: Terrain-driven. Use elevation for terrainHeights. Good when: elevation data, mountainous placeTypes, or outdoor news themes.
-- obstacle_dodge: Mixed data. Use news themes, placeTypes, weather for obstacle feel. Good when: varied data or no strong signal.
-- rhythm_tap: Music-driven. Spotify tempo directly sets beat speed. Good when: spotify.tempo present, or calming themes.
-- memory_match: Match pairs from uploaded image. Good when: image present and calm themes.
-- trivia: Answer questions from news headlines. Good when: news dominant. MUST include triviaQuestions: 3-5 items, each with question (from headlines), options (4 strings, one correct), correctIndex (0-3).
-- reaction_test: Tap/click on cue. Good when: high tempo or energetic news.
-- face_dodge: Live camera game. Move your face to dodge falling obstacles. Good when: useCamera requested, or image/camera present with energetic vibes.
+CRITICAL: 
+- task: Clear instruction. MUST reference specific places when available. "Take a photo of your hand holding a leaf at [Park Name]" not "a park". Verifiable via single photo.
+- verificationCriteria: What to look for in the photo. Be specific (e.g. "hand visible holding a green plant or leaf").
+- travelItinerary: 2-4 steps with REAL place names. "1. Walk to [Park Name]. 2. Find the grass near [Landmark]. 3. Complete your task there." Use nearbyPlaces/placeTypes.
+- sideQuest: Tied to the specific location. "Find the weirdest leaf in [Park Name]" or "Spot the oldest tree in [Neighborhood]".
+
+PERSONALIZE from user data:
+1. LANDSCAPE (PRIORITY): nearbyPlaces, placeTypes → MUST name these in task/itinerary. Park names, cafe names, street names, neighborhood names.
+2. WEATHER: Clear/sunny → outdoor task. Rain? Indoor task (e.g. "show your drink by a window at [Cafe Name]"). Extreme? Suggest staying in.
+3. NEWS: Reference in reasoning. Tense news? Suggest "touch grass" or outdoor task.
+4. SPOTIFY: Reference track/artist in reasoning.
+
+reasoning: Gen-Z memeified style. Slang (no cap, touch grass, it's giving, bestie). 1-2 sentences. Reference their data.
 
 User data (USE THIS):
 ${JSON.stringify(metrics, null, 2)}
 
-PERSONALIZATION RULES (follow strictly):
-1. NEWS: 
-   - dominantThemes and headlines → reasoning should reference these (in memeified style)
-   - Sports/energetic headlines → higher scrollSpeed (8-12), day theme
-   - Politics/tense → obstacle_dodge, higher difficulty (6-8)
-   - Tech/science → futuristic feel, rhythm_tap or obstacle_dodge
-   - Entertainment → lighter difficulty (3-5)
-   - categories (sports, technology, etc.) → influence game type choice
+IMPORTANT: If landscape.nearbyPlaces exists, it contains real place names (e.g. "Bryant Park", "Starbucks"). Use these EXACT names in task, travelItinerary, and sideQuest. Do not paraphrase—use the names as given.
 
-2. WEATHER:
-   - Rain, snow, fog, overcast → theme: "night", slightly higher difficulty
-   - Clear, sunny → theme: "day"
-   - Temp >90°F or <32°F → difficulty +1
-   - Thunderstorm → obstacle_dodge with higher obstacleDensity
-
-3. LANDSCAPE:
-   - elevation >500m → endless_runner, terrainHeights from elevation (normalize to 0.3-0.9)
-   - elevation 100-500m → varied terrainHeights (hills)
-   - placeTypes: park → day theme; mountain/hiking → endless_runner; restaurant/store → obstacle_dodge
-
-4. SPOTIFY / UPLOADED PLAYLIST:
-   - tempo 80-100 → rhythm_tap, scrollSpeed = tempo/12 (clamped 4-10)
-   - tempo >120 → endless_runner or obstacle_dodge, scrollSpeed = tempo/15
-   - tempo <80 → rhythm_tap with slow beats, scrollSpeed 3-5
-   - uploadedPlaylist: use average tempo from tracks if available; reference track names in reasoning
-
-5. NUMERIC MAPPINGS:
-   - terrainHeights: 15 values, 0.2-0.8. From elevation: (elevation/1000) clamped, or vary by placeTypes
-   - scrollSpeed: 3-12. From tempo: tempo/15. From news energy: sports=10, politics=8, tech=6
-   - obstacleDensity: 0.2-0.6. Higher for tense news or bad weather
-   - difficulty: 1-10. Base 5, +1 for extreme weather, +1 for tense news
-
-6. CREATIVE FIELDS (add these):
-   - flavor: one word (chaotic, chill, intense, whimsical, dystopian, etc.) from data mood
-   - mood: emotional tone from headlines + weather + music combined
-   - narrativeHook: one-line story from data, e.g. "dodging the news cycle" or "running to the beat of [track]"
-
-reasoning: Write in Gen-Z memeified style with irony. Use slang (no cap, lowkey, slay, it's giving, Deadass, Jestermaxxing, Mog, Mogging, Cortisol Spike, etc.), sarcasm, and self-deprecating humor. Reference their data but make it funny and ironic—like a friend roasting their news feed or weather. 1-2 sentences max. Example vibes: "it's giving main character energy based on your chaotic news cycle fr fr" or "your weather said touch grass so we made you run through it bestie."
-
-Generate the game config as JSON.`;
+Generate the game config as JSON. gameType must be "real_world_task".`;
 }

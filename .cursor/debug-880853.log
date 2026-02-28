@@ -1,0 +1,7 @@
+{"sessionId":"880853","location":"RecessHeatMap.tsx","message":"RecessHeatMap mount","data":{"apiKeyConfigured":true,"apiKeyLength":39,"hypothesisId":"H2"},"timestamp":1772308403220}
+{"sessionId":"880853","location":"RecessHeatMap.tsx","message":"useJsApiLoader state","data":{"isLoaded":false,"loadError":null,"hypothesisId":"H1,H3"},"timestamp":1772308403221}
+{"sessionId":"880853","location":"RecessHeatMap.tsx","message":"RecessHeatMap mount","data":{"apiKeyConfigured":true,"apiKeyLength":39,"hypothesisId":"H2"},"timestamp":1772308403222}
+{"sessionId":"880853","location":"RecessHeatMap.tsx","message":"useJsApiLoader state","data":{"isLoaded":false,"loadError":null,"hypothesisId":"H1,H3"},"timestamp":1772308403223}
+{"sessionId":"880853","location":"RecessHeatMap.tsx","message":"useJsApiLoader state","data":{"isLoaded":true,"loadError":null,"hypothesisId":"H1,H3"},"timestamp":1772308403249}
+{"sessionId":"880853","location":"RecessHeatMap.tsx","message":"GoogleMap onLoad success","data":{"hypothesisId":"H3"},"timestamp":1772308403252}
+{"sessionId":"880853","location":"RecessHeatMap.tsx","message":"GoogleMap onLoad success","data":{"hypothesisId":"H3"},"timestamp":1772308403252}

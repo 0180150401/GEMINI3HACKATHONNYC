@@ -41,11 +41,17 @@ export async function getElevationPath(
   return (data.results ?? []).map((r) => r.elevation);
 }
 
+/** Place name + type for location-specific tasks */
+export interface NearbyPlace {
+  name: string;
+  types: string[];
+}
+
 export async function getNearbyPlaces(
   lat: number,
   lng: number,
   radiusMeters = 500
-): Promise<string[]> {
+): Promise<NearbyPlace[]> {
   const apiKey = process.env.GOOGLE_MAPS_API_KEY;
   if (!apiKey) return [];
   const url = `${GOOGLE_PLACES_NEARBY}?location=${lat},${lng}&radius=${radiusMeters}&key=${apiKey}`;
@@ -55,7 +61,19 @@ export async function getNearbyPlaces(
     results?: { types?: string[]; name?: string }[];
   };
   const places = data.results ?? [];
+  return places
+    .filter((p) => p.name && p.name.trim())
+    .map((p) => ({ name: p.name!.trim(), types: p.types ?? [] }));
+}
+
+/** Legacy: returns place types only (for backward compat) */
+export async function getNearbyPlaceTypes(
+  lat: number,
+  lng: number,
+  radiusMeters = 500
+): Promise<string[]> {
+  const places = await getNearbyPlaces(lat, lng, radiusMeters);
   const types = new Set<string>();
-  places.forEach((p) => p.types?.forEach((t) => types.add(t)));
+  places.forEach((p) => p.types.forEach((t) => types.add(t)));
   return [...types];
 }

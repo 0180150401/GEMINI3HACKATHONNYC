@@ -6,13 +6,7 @@ import { buildGamePrompt, GAME_CONFIG_SCHEMA } from './game-prompt';
 export interface GenerateGameOptions {
   imageBase64?: string;
   imageMimeType?: string;
-  useCamera?: boolean;
-  suggestedType?: string;
-  dtPath?: string[];
-  recentGameTypes?: string[];
-  signalScores?: { music: number; terrain: number; news: number; image: number; weather: number };
   nicheContext?: {
-    dominantSignal: string;
     placeVibe?: string;
     newsVibe?: string;
     weatherVibe?: string;
@@ -21,14 +15,14 @@ export interface GenerateGameOptions {
 }
 
 const DEFAULT_CONFIG: GameConfig = {
-  gameType: 'obstacle_dodge',
-  reasoning: 'Demo mode: no API key. Using default config.',
+  gameType: 'real_world_task',
+  reasoning: 'Demo mode: no API key. Using default task.',
   config: {
-    scrollSpeed: 6,
-    obstacleDensity: 0.3,
-    terrainHeights: Array(15).fill(0.5),
+    task: 'Take a photo of your hand holding something green (plant, leaf, or grass)',
+    verificationCriteria: 'hand visible holding a green plant, leaf, or grass',
+    travelItinerary: '1. Step outside. 2. Find a park, yard, or any spot with plants. 3. Complete your task there.',
+    sideQuest: 'Spot something green you\'ve never noticed before.',
     theme: 'day',
-    difficulty: 5,
   },
 };
 
@@ -42,11 +36,6 @@ export async function generateGameConfig(metrics: UserMetrics, options?: Generat
   const hasImage = !!(options?.imageBase64 && options?.imageMimeType);
   const prompt = buildGamePrompt(metrics, {
     hasImage,
-    useCamera: options?.useCamera,
-    suggestedType: options?.suggestedType,
-    dtPath: options?.dtPath,
-    recentGameTypes: options?.recentGameTypes,
-    signalScores: options?.signalScores,
     nicheContext: options?.nicheContext,
   });
 
@@ -73,7 +62,7 @@ export async function generateGameConfig(metrics: UserMetrics, options?: Generat
     if (msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('quota')) {
       return {
         ...DEFAULT_CONFIG,
-        reasoning: 'Rate limit reached. Using default config. Check quota at ai.google.dev.',
+        reasoning: 'Rate limit reached. Using default task. Check quota at ai.google.dev.',
       };
     }
     throw new Error(`Gemini API error: ${msg}`);
@@ -91,38 +80,18 @@ export async function generateGameConfig(metrics: UserMetrics, options?: Generat
     throw new Error('Invalid JSON from Gemini');
   }
 
-  // Ensure valid game type
-  const validTypes = [
-    'endless_runner',
-    'obstacle_dodge',
-    'rhythm_tap',
-    'memory_match',
-    'trivia',
-    'reaction_test',
-    'face_dodge',
-  ];
-  if (!validTypes.includes(parsed.gameType)) {
-    parsed.gameType = 'obstacle_dodge';
-  }
-
-  // Ensure config has required fields
-  const defaultTrivia = [
-    { question: 'What is the capital of France?', options: ['London', 'Paris', 'Berlin', 'Madrid'], correctIndex: 1 },
-    { question: 'Which planet is closest to the Sun?', options: ['Venus', 'Mercury', 'Mars', 'Earth'], correctIndex: 1 },
-    { question: 'How many continents are there?', options: ['5', '6', '7', '8'], correctIndex: 2 },
-  ];
-  const triviaQuestions =
-    Array.isArray(parsed.config?.triviaQuestions) && parsed.config.triviaQuestions.length > 0
-      ? parsed.config.triviaQuestions
-      : defaultTrivia;
+  parsed.gameType = 'real_world_task';
+  const defaultTask = 'Take a photo of your hand holding something green (plant, leaf, or grass)';
+  const defaultCriteria = 'hand visible holding a green plant, leaf, or grass';
+  const defaultItinerary = '1. Step outside. 2. Find a park or spot with plants. 3. Complete your task there.';
+  const defaultSideQuest = 'Spot something unexpected along the way.';
   parsed.config = {
-    scrollSpeed: parsed.config?.scrollSpeed ?? 6,
-    obstacleDensity: parsed.config?.obstacleDensity ?? 0.3,
-    terrainHeights: parsed.config?.terrainHeights ?? Array(15).fill(0.5),
     theme: parsed.config?.theme ?? 'day',
-    difficulty: parsed.config?.difficulty ?? 5,
     ...parsed.config,
-    triviaQuestions,
+    task: parsed.config?.task ?? defaultTask,
+    verificationCriteria: parsed.config?.verificationCriteria ?? defaultCriteria,
+    travelItinerary: parsed.config?.travelItinerary ?? defaultItinerary,
+    sideQuest: parsed.config?.sideQuest ?? defaultSideQuest,
   };
 
   return parsed;

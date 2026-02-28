@@ -35,6 +35,7 @@ export interface PipelineContext {
     lat: number;
     lng: number;
     placeTypes?: string[];
+    nearbyPlaces?: { name: string; types: string[] }[];
   };
   metadata: {
     pipelineRunAt: string;

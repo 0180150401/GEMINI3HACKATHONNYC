@@ -9,9 +9,19 @@ interface FriendsData {
   pendingReceived: { id: string; requesterId: string; displayName: string }[];
 }
 
+interface ActivityPoint {
+  lat: number;
+  lng: number;
+  weight?: number;
+  username?: string;
+  task?: string;
+  photoUrl?: string;
+}
+
 export default function FriendsPage() {
-  const [tab, setTab] = useState<'activity' | 'requests' | 'lookup'>('activity');
+  const [tab, setTab] = useState<'activity' | 'friends'>('activity');
   const [data, setData] = useState<FriendsData | null>(null);
+  const [activity, setActivity] = useState<ActivityPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [usernameInput, setUsernameInput] = useState('');
   const [addError, setAddError] = useState<string | null>(null);
@@ -29,9 +39,27 @@ export default function FriendsPage() {
     }
   };
 
+  const fetchActivity = async () => {
+    try {
+      const res = await fetch('/api/friends/activity');
+      if (res.ok) {
+        const json = await res.json();
+        setActivity(json.activity ?? []);
+      } else {
+        setActivity([]);
+      }
+    } catch {
+      setActivity([]);
+    }
+  };
+
   useEffect(() => {
     fetchFriends();
   }, []);
+
+  useEffect(() => {
+    if (tab === 'activity') fetchActivity();
+  }, [tab]);
 
   const handleAddFriend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,7 +92,12 @@ export default function FriendsPage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ connectionId }),
-    }).then((r) => { if (r.ok) fetchFriends(true); });
+    }).then((r) => {
+      if (r.ok) {
+        fetchFriends(true);
+        fetchActivity();
+      }
+    });
   };
 
   const handleDecline = (connectionId: string) => {
@@ -85,73 +118,97 @@ export default function FriendsPage() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <div className="max-w-lg mx-auto px-6 py-12 space-y-4">
-        <div className="flex border-2 border-white">
+      <div className="max-w-4xl mx-auto px-6 py-12 space-y-4">
+        <div className="flex gap-6">
           <button
             onClick={() => setTab('activity')}
-            className={`flex-1 py-3 text-xs font-bold uppercase ${tab === 'activity' ? 'bg-white text-black' : ''}`}
+            className={`text-xs font-bold uppercase ${tab === 'activity' ? 'text-white underline' : 'text-white/50 hover:text-white'}`}
           >
             Activity
           </button>
           <button
-            onClick={() => setTab('requests')}
-            className={`flex-1 py-3 text-xs font-bold uppercase ${tab === 'requests' ? 'bg-white text-black' : ''}`}
+            onClick={() => setTab('friends')}
+            className={`text-xs font-bold uppercase ${tab === 'friends' ? 'text-white underline' : 'text-white/50 hover:text-white'}`}
           >
-            Requests
-          </button>
-          <button
-            onClick={() => setTab('lookup')}
-            className={`flex-1 py-3 text-xs font-bold uppercase ${tab === 'lookup' ? 'bg-white text-black' : ''}`}
-          >
-            Lookup
+            Friends
           </button>
         </div>
 
         {tab === 'activity' && (
           <div className="space-y-3">
-            <p className="text-sm text-white/80">Where people are playing Recesss</p>
-            <div className="w-full rounded-lg overflow-hidden border-2 border-white/20" style={{ height: 320 }}>
-              <RecessHeatMap height="100%" />
+            <p className="text-sm text-white/80">Where friends are playing Recess</p>
+            <div className="w-full overflow-hidden" style={{ height: 560 }}>
+              <RecessHeatMap
+                height="100%"
+                points={activity.length > 0 ? activity : undefined}
+                friends={activity.length === 0 ? data?.friends : undefined}
+              />
             </div>
           </div>
         )}
 
-        {tab === 'requests' && (
-          <div className="space-y-2">
-            {data?.pendingReceived?.length ? (
-              data.pendingReceived.map((req) => (
-                <div key={req.id} className="flex items-center justify-between border-2 border-white p-3">
-                  <span className="text-sm">{req.displayName}</span>
-                  <div className="flex gap-2">
-                    <button onClick={() => handleAccept(req.id)} className="text-xs font-bold uppercase hover:underline">Accept</button>
-                    <button onClick={() => handleDecline(req.id)} className="text-xs text-white/50 hover:text-white">Decline</button>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-white/50">No requests</p>
-            )}
-          </div>
-        )}
-
-        {tab === 'lookup' && (
-          <form onSubmit={handleAddFriend} className="space-y-3">
-            <input
-              type="text"
-              value={usernameInput}
-              onChange={(e) => setUsernameInput(e.target.value.toLowerCase())}
-              placeholder="username"
-              className="w-full border-2 border-white bg-black px-4 py-3 text-sm placeholder:text-white/40 focus:outline-none"
-            />
+        {tab === 'friends' && (
+          <div className="space-y-4">
+            <form onSubmit={handleAddFriend} className="flex gap-2">
+              <input
+                type="text"
+                value={usernameInput}
+                onChange={(e) => setUsernameInput(e.target.value.toLowerCase())}
+                placeholder="Search username..."
+                className="flex-1 border border-white/30 bg-black px-4 py-2 text-sm placeholder:text-white/40 focus:outline-none focus:border-white/60"
+              />
+              <button
+                type="submit"
+                disabled={adding || !usernameInput.trim()}
+                className="px-4 py-2 text-xs font-bold uppercase border border-white/30 hover:bg-white hover:text-black disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-white"
+              >
+                {adding ? 'Sending' : 'Send'}
+              </button>
+            </form>
             {addError && <p className="text-xs text-white/60">{addError}</p>}
-            <button
-              type="submit"
-              disabled={adding || !usernameInput.trim()}
-              className="w-full border-2 border-white py-3 text-xs font-bold uppercase hover:bg-white hover:text-black disabled:opacity-50"
-            >
-              {adding ? 'Sending' : 'Send'}
-            </button>
-          </form>
+
+            {data?.pendingReceived?.length ? (
+              <div className="space-y-2">
+                <p className="text-xs font-bold uppercase text-white/60">Requests</p>
+                {data.pendingReceived.map((req) => (
+                  <div key={req.id} className="flex items-center justify-between border border-white/20 p-3">
+                    <span className="text-sm">{req.displayName}</span>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleAccept(req.id)}
+                        className="w-8 h-8 flex items-center justify-center bg-green-600 hover:bg-green-500 text-white text-sm font-bold"
+                        aria-label="Accept"
+                      >
+                        ✓
+                      </button>
+                      <button
+                        onClick={() => handleDecline(req.id)}
+                        className="w-8 h-8 flex items-center justify-center border border-white/40 hover:bg-white/10 text-white/70 hover:text-white text-sm"
+                        aria-label="Reject"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            <div className="space-y-2">
+              <p className="text-xs font-bold uppercase text-white/60">Friends</p>
+              {data?.friends?.length ? (
+                <div className="space-y-1">
+                  {data.friends.map((f) => (
+                    <div key={f.id} className="flex items-center justify-between border border-white/10 p-3">
+                      <span className="text-sm">{f.displayName || f.username}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-white/50">No friends yet</p>
+              )}
+            </div>
+          </div>
         )}
 
       </div>
