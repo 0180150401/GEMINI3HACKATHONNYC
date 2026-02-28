@@ -1,7 +1,7 @@
 import type { PipelineContext } from './types';
 import { ingestNewsAPI, ingestNewsRSS } from './sources/news';
 import { ingestWeather } from './sources/weather';
-import { ingestTerrain } from './sources/terrain';
+import { ingestTerrain, type TerrainData } from './sources/terrain';
 import { getNearbyPlaces } from '@/lib/api/google-maps';
 import { transform } from './transform';
 
@@ -53,11 +53,19 @@ export async function runPipeline(options: PipelineOptions = {}): Promise<Pipeli
   const allNews = [...newsGeneral, ...newsTech, ...newsSports, ...newsEnt, ...newsRss];
 
   // Stage 2: Transform
+  const terrainInput: TerrainData | null = terrain
+    ? {
+        ...terrain,
+        placeTypes: nearbyPlaces?.length ? [...new Set(nearbyPlaces.flatMap((p) => p.types))] : undefined,
+        nearbyPlaces,
+      }
+    : null;
+
   const transformed = transform({
     news: allNews,
     newsByCategory,
     weather,
-    terrain: terrain ? { ...terrain, placeTypes: nearbyPlaces?.length ? [...new Set(nearbyPlaces.flatMap((p) => p.types))] : undefined, nearbyPlaces } : null,
+    terrain: terrainInput,
   });
 
   // Stage 3: Enrich → PipelineContext
