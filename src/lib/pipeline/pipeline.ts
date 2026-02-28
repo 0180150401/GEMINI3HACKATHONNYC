@@ -2,11 +2,16 @@ import type { PipelineContext } from './types';
 import { ingestNewsAPI, ingestNewsRSS } from './sources/news';
 import { ingestWeather } from './sources/weather';
 import { ingestTerrain } from './sources/terrain';
+import { getNearbyPlaces } from '@/lib/api/google-maps';
 import { transform } from './transform';
 
 export interface PipelineOptions {
   lat?: number;
   lng?: number;
+  image?: {
+    base64: string;
+    mimeType: string;
+  };
 }
 
 /** Run full pipeline: ingest → transform → enrich → output */
@@ -18,7 +23,7 @@ export async function runPipeline(options: PipelineOptions = {}): Promise<Pipeli
   const stagesCompleted: string[] = ['ingest', 'transform', 'enrich'];
 
   // Stage 1: Ingest (parallel)
-  const [newsGeneral, newsTech, newsSports, newsEnt, newsRss, weather, terrain] = await Promise.all([
+  const [newsGeneral, newsTech, newsSports, newsEnt, newsRss, weather, terrain, placeTypes] = await Promise.all([
     process.env.NEWS_API_KEY ? ingestNewsAPI('general', 5) : [],
     process.env.NEWS_API_KEY ? ingestNewsAPI('technology', 3) : [],
     process.env.NEWS_API_KEY ? ingestNewsAPI('sports', 3) : [],
@@ -26,6 +31,7 @@ export async function runPipeline(options: PipelineOptions = {}): Promise<Pipeli
     !process.env.NEWS_API_KEY ? ingestNewsRSS(10) : [],
     ingestWeather(lat, lng),
     ingestTerrain(lat, lng),
+    getNearbyPlaces(lat, lng).catch(() => []),
   ]);
 
   if (newsGeneral.length) sourcesIngested.push('news:general');
@@ -51,11 +57,12 @@ export async function runPipeline(options: PipelineOptions = {}): Promise<Pipeli
     news: allNews,
     newsByCategory,
     weather,
-    terrain,
+    terrain: terrain ? { ...terrain, placeTypes: placeTypes?.length ? placeTypes : undefined } : null,
   });
 
   // Stage 3: Enrich → PipelineContext
   const context: PipelineContext = {
+    image: options.image,
     news: {
       headlines: transformed.headlines,
       categories: transformed.categories,
@@ -73,6 +80,7 @@ export async function runPipeline(options: PipelineOptions = {}): Promise<Pipeli
           elevation: transformed.terrain.elevation,
           lat: transformed.terrain.lat,
           lng: transformed.terrain.lng,
+          placeTypes: transformed.terrain.placeTypes,
         }
       : undefined,
     metadata: {

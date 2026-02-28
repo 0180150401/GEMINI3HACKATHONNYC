@@ -13,6 +13,7 @@ export function EndlessRunner({ config, ready = true }: { config: Config; ready?
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [gameOver, setGameOver] = useState(false);
   const [score, setScore] = useState(0);
+  const jumpRef = useRef(false);
   const scrollSpeed = config.scrollSpeed ?? 6;
   const terrainHeights = config.terrainHeights ?? Array(15).fill(0.5);
   const isDay = config.theme !== 'night';
@@ -42,18 +43,31 @@ export function EndlessRunner({ config, ready = true }: { config: Config; ready?
     const groundY = h - 40;
     const terrainSegW = 60;
     const segs = Math.ceil(w / terrainSegW) + 2;
-    let frame = 0;
     let jumping = false;
 
     const heights = [...terrainHeights];
     while (heights.length < segs) heights.push(heights[heights.length % heights.length] ?? 0.5);
 
+    const handleJump = () => {
+      if (!jumping) jumpRef.current = true;
+    };
+
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
+        e.preventDefault();
+        handleJump();
+      }
+    };
+
+    canvas.addEventListener('click', handleJump);
+    window.addEventListener('keydown', handleKey);
+
+    let rafId: number;
     function draw() {
       ctx.fillStyle = isDay ? '#87CEEB' : '#0a0a1a';
       ctx.fillRect(0, 0, w, h);
 
       scrollX += scrollSpeed;
-      frame++;
 
       for (let i = 0; i < segs; i++) {
         const segX = i * terrainSegW - (scrollX % terrainSegW);
@@ -63,9 +77,10 @@ export function EndlessRunner({ config, ready = true }: { config: Config; ready?
         ctx.fillRect(segX, segTop, terrainSegW + 2, h - segTop);
       }
 
-      if (!jumping && (frame % 80 === 0)) {
+      if (jumpRef.current && !jumping) {
         playerVy = -12;
         jumping = true;
+        jumpRef.current = false;
       }
       playerVy += 0.6;
       playerY += playerVy;
@@ -80,13 +95,19 @@ export function EndlessRunner({ config, ready = true }: { config: Config; ready?
 
       setScore(Math.floor(scrollX / 10));
 
-      if (!gameOver) requestAnimationFrame(draw);
+      if (!gameOver) rafId = requestAnimationFrame(draw);
     }
     draw();
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      canvas.removeEventListener('click', handleJump);
+      window.removeEventListener('keydown', handleKey);
+    };
   }, [scrollSpeed, terrainHeights, isDay, gameOver]);
 
   useEffect(() => {
-    if (ready && !gameOver) run();
+    if (ready && !gameOver) return run();
   }, [run, gameOver, ready]);
 
   return (
@@ -94,10 +115,10 @@ export function EndlessRunner({ config, ready = true }: { config: Config; ready?
       <p className="text-zinc-400">Score: {score}</p>
       <canvas
         ref={canvasRef}
-        className="rounded-lg bg-black"
+        className="rounded-lg bg-black cursor-pointer"
         style={{ width: 400, height: 300 }}
       />
-      <p className="text-sm text-zinc-500">Press to jump (auto-run)</p>
+      <p className="text-sm text-zinc-500">SPACE / W / ↑ or click to jump</p>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { generateGameConfig } from '@/lib/gemini/client';
 import type { UserMetrics } from '@/types';
 import { getPlaybackState } from '@/lib/api/spotify';
 import { runPipeline } from '@/lib/pipeline/pipeline';
+import { evaluateDecisionTree } from '@/lib/game-engine/decision-tree';
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -16,13 +17,21 @@ export async function POST(request: Request) {
     lat?: number;
     lng?: number;
     metrics?: Partial<UserMetrics>;
+    imageBase64?: string;
+    imageMimeType?: string;
   };
 
   const lat = body.lat ?? 40.7128;
   const lng = body.lng ?? -74.006;
 
-  // Run full data pipeline (ingest → transform → enrich)
-  const pipelineContext = await runPipeline({ lat, lng });
+  // Run full data pipeline (ingest → transform → enrich), inject user image when present
+  const pipelineContext = await runPipeline({
+    lat,
+    lng,
+    image: body.imageBase64 && body.imageMimeType
+      ? { base64: body.imageBase64, mimeType: body.imageMimeType }
+      : undefined,
+  });
 
   const metrics: UserMetrics = {
     landscape: pipelineContext.terrain
@@ -30,6 +39,7 @@ export async function POST(request: Request) {
           elevation: pipelineContext.terrain.elevation,
           lat: pipelineContext.terrain.lat,
           lng: pipelineContext.terrain.lng,
+          placeTypes: pipelineContext.terrain.placeTypes,
         }
       : undefined,
     news: {
@@ -64,8 +74,31 @@ export async function POST(request: Request) {
     }
   }
 
+  // Fetch recent game types for user to encourage variety (Gemini + Gaming: persistent memory)
+  const { data: recentSessions } = await supabase
+    .from('game_sessions')
+    .select('game_type')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(5);
+
+  const recentGameTypes = (recentSessions ?? []).map((s) => s.game_type).filter(Boolean);
+
   try {
-    const gameConfig = await generateGameConfig(metrics);
+    const dtResult = evaluateDecisionTree(metrics, {
+      hasImage: !!pipelineContext.image,
+      recentGameTypes,
+    });
+
+    const gameConfig = await generateGameConfig(metrics, {
+      imageBase64: pipelineContext.image?.base64,
+      imageMimeType: pipelineContext.image?.mimeType ?? 'image/jpeg',
+      suggestedType: dtResult.suggestedType,
+      dtPath: dtResult.path,
+      recentGameTypes,
+      signalScores: dtResult.signalScores,
+      nicheContext: dtResult.nicheContext,
+    });
 
     const { data: session, error } = await supabase
       .from('game_sessions')

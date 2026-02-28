@@ -5,6 +5,9 @@ import type { GameConfig } from '@/types';
 import { EndlessRunner } from '@/components/games/EndlessRunner';
 import { ObstacleDodge } from '@/components/games/ObstacleDodge';
 import { RhythmTap } from '@/components/games/RhythmTap';
+import { MemoryMatch } from '@/components/games/MemoryMatch';
+import { Trivia } from '@/components/games/Trivia';
+import { ReactionTest } from '@/components/games/ReactionTest';
 
 interface ExecutorProps {
   config: GameConfig;
@@ -12,16 +15,28 @@ interface ExecutorProps {
 
 const HOW_TO_PLAY: Record<string, { desc: string; computer: string }> = {
   endless_runner: {
-    desc: 'Auto-runner. Survive as long as you can.',
-    computer: 'No controls — automatic',
+    desc: 'Auto-runner. Jump over terrain.',
+    computer: 'SPACE / W / ↑ or click to jump',
   },
   obstacle_dodge: {
     desc: 'Dodge the red obstacles.',
-    computer: 'No controls — automatic',
+    computer: '↑↓ or W/S to move. Tap top/bottom on mobile.',
   },
   rhythm_tap: {
     desc: 'Hit beats when they reach the zone.',
     computer: 'Click or press SPACE',
+  },
+  memory_match: {
+    desc: 'Match pairs from your image.',
+    computer: 'Click cards to flip and match',
+  },
+  trivia: {
+    desc: 'Answer questions from news.',
+    computer: 'Select the correct answer',
+  },
+  reaction_test: {
+    desc: 'Tap when the cue appears.',
+    computer: 'SPACE or click when target appears',
   },
 };
 
@@ -33,6 +48,12 @@ function GameContent({ config, ready }: ExecutorProps & { ready: boolean }) {
       return <ObstacleDodge config={config.config} ready={ready} />;
     case 'rhythm_tap':
       return <RhythmTap config={config.config} ready={ready} />;
+    case 'memory_match':
+      return <MemoryMatch config={config.config} ready={ready} />;
+    case 'trivia':
+      return <Trivia config={config.config} ready={ready} />;
+    case 'reaction_test':
+      return <ReactionTest config={config.config} ready={ready} />;
     default:
       return <ObstacleDodge config={config.config} ready={ready} />;
   }

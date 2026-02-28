@@ -8,9 +8,12 @@ interface Config {
   theme?: 'day' | 'night';
 }
 
+const MOVE_SPEED = 5;
+
 export function ObstacleDodge({ config, ready = true }: { config: Config; ready?: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [score, setScore] = useState(0);
+  const moveDirRef = useRef(0);
   const scrollSpeed = config.scrollSpeed ?? 6;
   const density = Math.min(1, Math.max(0.1, config.obstacleDensity ?? 0.3));
   const isDay = config.theme !== 'night';
@@ -30,10 +33,42 @@ export function ObstacleDodge({ config, ready = true }: { config: Config; ready?
 
     let playerY = h / 2;
     const obstacles: { x: number; y: number; w: number; h: number }[] = [];
-    let frame = 0;
     let gameOver = false;
 
-    function spawn() {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'ArrowUp' || e.code === 'KeyW') {
+        e.preventDefault();
+        moveDirRef.current = -1;
+      } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
+        e.preventDefault();
+        moveDirRef.current = 1;
+      }
+    };
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'ArrowUp' || e.code === 'KeyW') {
+        if (moveDirRef.current === -1) moveDirRef.current = 0;
+      } else if (e.code === 'ArrowDown' || e.code === 'KeyS') {
+        if (moveDirRef.current === 1) moveDirRef.current = 0;
+      }
+    };
+
+    const handleTouchStart = (e: TouchEvent | MouseEvent) => {
+      if (e instanceof TouchEvent) e.preventDefault();
+      const clientY = e instanceof TouchEvent ? e.touches[0].clientY : e.clientY;
+      const rect = canvas.getBoundingClientRect();
+      const relY = clientY - rect.top;
+      moveDirRef.current = relY < rect.height / 2 ? -1 : 1;
+      const clearDir = () => { moveDirRef.current = 0; };
+      window.addEventListener('touchend', clearDir, { once: true });
+      window.addEventListener('mouseup', clearDir, { once: true });
+    };
+
+    canvas.addEventListener('touchstart', handleTouchStart as EventListener, { passive: false });
+    canvas.addEventListener('mousedown', handleTouchStart as EventListener);
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    function spawn(frame: number) {
       if (Math.random() < density * 0.15) {
         obstacles.push({
           x: w,
@@ -44,14 +79,16 @@ export function ObstacleDodge({ config, ready = true }: { config: Config; ready?
       }
     }
 
+    let frame = 0;
+    let rafId: number;
     function draw() {
       ctx.fillStyle = isDay ? '#87CEEB' : '#0a0a1a';
       ctx.fillRect(0, 0, w, h);
 
       frame++;
-      if (frame % 2 === 0) spawn();
+      if (frame % 2 === 0) spawn(frame);
 
-      playerY += (Math.sin(frame * 0.05) * 0.5);
+      playerY += moveDirRef.current * MOVE_SPEED;
       playerY = Math.max(30, Math.min(h - 30, playerY));
 
       ctx.fillStyle = '#22c55e';
@@ -73,13 +110,21 @@ export function ObstacleDodge({ config, ready = true }: { config: Config; ready?
         }
       }
 
-      if (!gameOver) requestAnimationFrame(draw);
+      if (!gameOver) rafId = requestAnimationFrame(draw);
     }
     draw();
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      canvas.removeEventListener('touchstart', handleTouchStart as EventListener);
+      canvas.removeEventListener('mousedown', handleTouchStart as EventListener);
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
   }, [scrollSpeed, density, isDay]);
 
   useEffect(() => {
-    if (ready) run();
+    if (ready) return run();
   }, [run, ready]);
 
   return (
@@ -87,11 +132,11 @@ export function ObstacleDodge({ config, ready = true }: { config: Config; ready?
       <p className="text-zinc-400">Score: {score}</p>
       <canvas
         ref={canvasRef}
-        className="rounded-lg bg-black"
+        className="rounded-lg bg-black cursor-pointer"
         width={400}
         height={300}
       />
-      <p className="text-sm text-zinc-500">Dodge the red obstacles</p>
+      <p className="text-sm text-zinc-500">↑↓ or W/S to move up and down</p>
     </div>
   );
 }

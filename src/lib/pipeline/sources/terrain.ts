@@ -4,6 +4,7 @@ export interface TerrainData {
   elevation: number;
   lat: number;
   lng: number;
+  placeTypes?: string[];
 }
 
 export async function ingestTerrain(lat = 40.7128, lng = -74.006): Promise<TerrainData | null> {

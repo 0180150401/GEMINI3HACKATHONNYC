@@ -15,6 +15,11 @@ export interface TransformedItem {
 
 /** Enriched context for game generation */
 export interface PipelineContext {
+  /** User-uploaded image for image-based personalization */
+  image?: {
+    base64: string;
+    mimeType: string;
+  };
   news: {
     headlines: string[];
     categories: Record<string, string[]>;
@@ -29,6 +34,7 @@ export interface PipelineContext {
     elevation: number;
     lat: number;
     lng: number;
+    placeTypes?: string[];
   };
   metadata: {
     pipelineRunAt: string;
